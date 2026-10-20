@@ -1,0 +1,6 @@
+# keep line endings as LF everywhere (nginx / python / html don't like CRLF surprises)
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Grand Theft Neko: San Meowdreas</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#1a1020;font-family:"Trebuchet MS",system-ui,sans-serif;color:#fff;user-select:none}
+#hud{position:fixed;inset:0;pointer-events:none;text-shadow:0 2px 5px #000}
+#stars{position:absolute;top:14px;right:18px;font-size:34px;letter-spacing:4px}
+#stars i{font-style:normal;color:#ffffff45}#stars i.on{color:#ffd400}
+#stars.blink i.on{animation:b .45s infinite alternate}@keyframes b{to{opacity:.1}}
+#money{position:absolute;top:60px;right:18px;font-size:28px;font-weight:700;color:#8aff9a}
+#spd{position:absolute;bottom:18px;right:20px;font-size:30px;font-weight:700}
+#mm{position:absolute;left:14px;bottom:14px;border:3px solid #ff8fc7;border-radius:50%;background:#223}
+#toast{position:absolute;top:22%;width:100%;text-align:center;font-size:clamp(26px,6vw,54px);font-weight:900;color:#ff8fc7;opacity:0;transition:opacity .4s;-webkit-text-stroke:1px #fff}
+#toast.on{opacity:1}
+#tip{position:absolute;bottom:22px;width:100%;text-align:center;font-size:18px}
+#menu{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(#ff9ecd,#7e57c2);text-align:center;padding:20px;z-index:5}
+#menu h1{font-size:clamp(34px,8vw,80px);margin:0;line-height:1;text-shadow:4px 4px 0 #5e35b1}
+#menu p{max-width:560px;line-height:1.6;margin:14px 0}
+#menu button{font:inherit;font-size:24px;font-weight:800;padding:12px 38px;border:0;border-radius:40px;background:#fff;color:#d81b60;cursor:pointer}
+#menu button:focus-visible{outline:4px solid #ffd400}
+html,body,canvas{touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none}
+#menu{overflow:auto}
+.tcx{display:none}body.touch .tcx{display:inline}body.touch .kb{display:none}
+#tc{position:fixed;inset:0;pointer-events:none;display:none;z-index:3}
+body.touch #tc{display:block}
+body.touch #mm{left:10px;bottom:auto;top:10px;width:96px;height:96px}
+body.touch #spd{right:auto;left:50%;transform:translateX(-50%);bottom:12px;font-size:22px}
+body.touch #tip{bottom:150px;font-size:15px}
+body.touch #stars{font-size:26px;top:8px;right:12px}
+body.touch #money{font-size:22px;top:44px;right:12px}
+#joy{position:absolute;left:max(22px,env(safe-area-inset-left));bottom:max(22px,env(safe-area-inset-bottom));width:130px;height:130px;border-radius:50%;background:#ffffff30;border:3px solid #ffffff80;pointer-events:auto;touch-action:none}
+#knob{position:absolute;left:35px;top:35px;width:60px;height:60px;border-radius:50%;background:#ff8fc7e0;border:2px solid #fff}
+.tb{position:absolute;pointer-events:auto;touch-action:none;border-radius:50%;border:3px solid #fff;background:#d81b6fc0;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px}
+#bA{right:max(22px,env(safe-area-inset-right));bottom:max(36px,env(safe-area-inset-bottom));width:88px;height:88px}
+#bF{right:128px;bottom:max(28px,env(safe-area-inset-bottom));width:72px;height:72px;background:#5e35b1c0}
+#bR{right:max(34px,env(safe-area-inset-right));bottom:140px;width:64px;height:64px;background:#00897bc0}
+@media(max-height:500px){#menu h1{font-size:30px}#menu p{margin:6px;font-size:14px;line-height:1.4}#menu button{font-size:20px;padding:8px 28px}}
+</style></head><body>
+<div id="hud"><div id="stars"></div><div id="money"></div><div id="spd"></div>
+<canvas id="mm" width="140" height="140"></canvas><div id="toast"></div><div id="tip"></div></div>
+<div id="tc"><div id="joy"><div id="knob"></div></div><div class="tb" id="bR">Run</div><div class="tb" id="bF">Enter</div><div class="tb" id="bA">Punch</div></div>
+<div id="menu"><h1>Grand Theft Neko<br>San Meowdreas</h1>
+<p>You're a catgirl loose in the pastel city. Steal cars, dodge the femboy police, and lose your stars.<br><br>
+<span class="kb"><b>W/S</b> move &nbsp; <b>A/D</b> turn &nbsp; <b>Shift</b> sprint &nbsp; <b>Space</b> punch / handbrake<br><b>F</b> enter or exit car &nbsp; <b>Drag mouse</b> look around</span><span class="tcx"><b>Left stick</b> moves and steers &nbsp; <b>Drag the screen</b> to look<br><b>Punch / Brake</b>, <b>Enter / Exit</b> and <b>Run</b> buttons on the right</span><br><br>
+Lose stars by escaping the cops for a while or by driving through the <b>Neko Spray</b> ring (pink circle on the map).</p>
+<button id="go">Start, nya!</button></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id),rnd=(a,b)=>a+Math.random()*(b-a),pick=a=>a[Math.random()*a.length|0],clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const S=new THREE.Scene();S.background=new THREE.Color(0xffc2e0);S.fog=new THREE.Fog(0xffc2e0,60,280);
+const R=new THREE.WebGLRenderer({antialias:true});R.setPixelRatio(Math.min(devicePixelRatio,matchMedia("(pointer:coarse)").matches?1.5:2));R.setSize(innerWidth,innerHeight);document.body.prepend(R.domElement);
+const C=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,400);
+S.add(new THREE.HemisphereLight(0xffffff,0x9977aa,.95));
+const sun=new THREE.DirectionalLight(0xfff0e0,.6);sun.position.set(40,100,20);S.add(sun);
+addEventListener('resize',()=>{R.setSize(innerWidth,innerHeight);C.aspect=innerWidth/innerHeight;C.updateProjectionMatrix()});
+const mat=c=>new THREE.MeshLambertMaterial({color:c});
+const box=(w,h,d,c,x,y,z,p)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c));m.position.set(x,y,z);(p||S).add(m);return m};
+/* ---------- city ---------- */
+const P=54,D=4*P+20,B=[],PAL=[0xff9ecd,0xb39ddb,0x80d8ff,0xffe082,0xa5d6a7,0xf48fb1,0xce93d8,0x90caf9,0xffab91];
+box(2*D+200,.2,2*D+200,0x3a3a48,0,-.1,0);
+for(let i=0;i<8;i++){const r=(i-4+.5)*P;box(.4,.05,2*D,0xffe36b,r,.03,0);box(2*D,.05,.4,0xffe36b,0,.03,r)}
+for(let i=-4;i<=4;i++)for(let j=-4;j<=4;j++){
+ const cx=i*P,cz=j*P;
+ if(!i&&!j){box(40,.3,40,0x7bd88f,0,.05,0);for(let k=0;k<14;k++){const x=rnd(-17,17),z=rnd(-17,17);box(.6,2.4,.6,0x8d6e63,x,1.2,z);const f=new THREE.Mesh(new THREE.SphereGeometry(2,8,6),mat(0xff9ecd));f.position.set(x,3.6,z);S.add(f)}continue}
+ box(40,.3,40,0x9d98ad,cx,.05,cz);
+ for(const qx of[-1,1])for(const qz of[-1,1]){
+  const h=rnd(8,i*i+j*j<5?48:26),x=cx+qx*9.8,z=cz+qz*9.8;
+  box(17,h,17,pick(PAL),x,h/2,z);box(17.6,.5,17.6,0xffffff,x,h+.25,z);
+  B.push({x0:x-8.5,x1:x+8.5,z0:z-8.5,z1:z+8.5})}}
+function wall(o,r){let hit=false;
+ for(const b of B){if(o.x<b.x0-r||o.x>b.x1+r||o.z<b.z0-r||o.z>b.z1+r)continue;
+  const cx=clamp(o.x,b.x0,b.x1),cz=clamp(o.z,b.z0,b.z1);let dx=o.x-cx,dz=o.z-cz,d=Math.hypot(dx,dz);
+  if(d<r){if(d<1e-4){dx=1;dz=0;d=1}o.x=cx+dx/d*r;o.z=cz+dz/d*r;hit=true}}
+ o.x=clamp(o.x,-D,D);o.z=clamp(o.z,-D,D);return hit}
+const blocked=(x,z)=>B.some(b=>x>b.x0-1&&x<b.x1+1&&z>b.z0-1&&z<b.z1+1);
+const SX=-81,SZ=27;{const m=new THREE.Mesh(new THREE.CylinderGeometry(5,5,.3,24),new THREE.MeshBasicMaterial({color:0xff4fa3}));m.position.set(SX,.2,SZ);S.add(m)}
+/* ---------- characters ---------- */
+function person(o){const g=new THREE.Group(),a=(geo,c,x,y,z,p)=>{const m=new THREE.Mesh(geo,mat(c));m.position.set(x,y,z);(p||g).add(m);return m};
+ a(new THREE.CylinderGeometry(.32,.36,.8,10),o.top,0,1.25,0);a(new THREE.CylinderGeometry(.38,.52,.35,10),o.bot,0,.82,0);
+ g.lg=[-1,1].map(s=>{const p=new THREE.Group();p.position.set(s*.17,.7,0);g.add(p);a(new THREE.BoxGeometry(.2,.7,.2),o.leg,0,-.35,0,p);return p});
+ g.ar=[-1,1].map(s=>{const p=new THREE.Group();p.position.set(s*.45,1.55,0);g.add(p);a(new THREE.BoxGeometry(.15,.65,.15),o.skin,0,-.3,0,p);return p});
+ a(new THREE.SphereGeometry(.36,14,10),o.skin,0,1.95,0);a(new THREE.SphereGeometry(.4,14,10,0,6.3,0,1.9),o.hair,0,1.98,-.03);
+ [-1,1].forEach(s=>a(new THREE.SphereGeometry(.07,8,6),o.eye,s*.14,1.95,.31));
+ if(o.cat){[-1,1].forEach(s=>{const e=a(new THREE.ConeGeometry(.15,.32,4),o.hair,s*.22,2.4,0);e.rotation.z=-s*.25;a(new THREE.ConeGeometry(.08,.2,4),0xffc1dd,s*.22,2.38,.04).rotation.z=-s*.25});
+  a(new THREE.SphereGeometry(.06,8,6),0xffd700,0,1.62,.3);
+  const t=new THREE.Group();t.position.set(0,.85,-.35);g.add(t);for(let k=0;k<6;k++)a(new THREE.SphereGeometry(.09,6,6),k>4?0xffffff:o.hair,0,k*.14,-Math.sin(k*.5)*.22,t);g.tail=t}
+ if(o.cop){a(new THREE.CylinderGeometry(.34,.38,.2,12),0x1a237e,0,2.32,0);box(.5,.04,.28,0x111111,0,2.24,.3,g);box(.1,.1,.03,0xffd700,.14,1.45,.33,g);box(.08,.5,.02,0xff8fc7,0,1.3,.36,g)}
+ return g}
+const CAT={skin:0xffe3d3,top:0xffffff,bot:0xff5fa2,leg:0xffffff,hair:0xff8fc7,eye:0x00bcd4,cat:1};
+const COP={skin:0xffe3d3,top:0x3949ab,bot:0x1a237e,leg:0xffffff,hair:0xd1b3ff,eye:0x333333,cop:1};
+const CIV=()=>({skin:pick([0xffe0bd,0xd9a066,0x8d5524]),top:pick(PAL),bot:pick([0x333333,0x546e7a,0x6d4c41]),leg:0x333333,hair:pick([0x222222,0x6d4c41,0xffd54f]),eye:0x222222});
+const walkAnim=(g,t,k)=>{g.lg[0].rotation.x=Math.sin(t)*k;g.lg[1].rotation.x=-Math.sin(t)*k;g.ar[0].rotation.x=-Math.sin(t)*k;g.ar[1].rotation.x=Math.sin(t)*k};
+/* ---------- cars ---------- */
+function mkCar(col,pol){const g=new THREE.Group();
+ box(2,.7,4.2,pol?0x151515:col,0,.7,0,g);box(1.7,.6,2.1,pol?0xffffff:col,0,1.3,-.2,g);box(1.75,.45,1.9,0x223344,0,1.35,-.2,g);
+ if(pol){box(2.04,.4,1.5,0xffffff,0,.7,0,g);g.r=box(.6,.2,.3,0xff2222,-.4,1.75,-.2,g);g.b=box(.6,.2,.3,0x2255ff,.4,1.75,-.2,g)}
+ [-1,1].forEach(sx=>[-1,1].forEach(sz=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(.4,.4,.3,10),mat(0x111111));w.rotation.z=Math.PI/2;w.position.set(sx*1,.4,sz*1.35);g.add(w)}));
+ [-1,1].forEach(s=>{box(.4,.2,.1,0xffffaa,s*.6,.8,2.1,g);box(.4,.2,.1,0xff3333,s*.6,.8,-2.1,g)});
+ S.add(g);return g}
+let cars=[];
+function addCar(x,z,h,ai,col){const pol=ai=='cop',c={m:mkCar(col||pick(PAL),pol),x,z,h,v:0,ai,pol,max:30};cars.push(c);return c}
+function roadPos(){const r=((Math.random()*8|0)-4+.5)*P,l=rnd(-D+12,D-12);return Math.random()<.5?{x:r,z:l,h:Math.random()<.5?0:Math.PI}:{x:l,z:r,h:Math.random()<.5?1.571:-1.571}}
+function nearPos(min,max){let p;for(let i=0;i<40;i++){p=roadPos();const d=Math.hypot(p.x-pl.x,p.z-pl.z);if(d>min&&d<max)break}return p}
+/* ---------- state ---------- */
+const pl={x:27,z:40,h:0,car:null,m:person(CAT),punch:0,bust:0,t:0};S.add(pl.m);
+let wanted=0,calm=0,cd=0,money=0,started=false,offT=0,spT=0,camH=0,camOff=0,drag=false,tt=0,toastT;
+money=250;
+addCar(31.5,52,0,null,0xff4fa3);
+for(let i=0;i<26;i++){const p=roadPos(),o=Math.random()<.5?4.5:-4.5;if(p.h==0||p.h==Math.PI)p.x+=o;else p.z+=o;addCar(p.x,p.z,p.h,null)}
+for(let i=0;i<9;i++){const r=((Math.random()*8|0)-4+.5)*P,vert=Math.random()<.5,dir=Math.random()<.5?1:-1,l=rnd(-D,D);
+ const c=addCar(vert?r-2.6*dir:l,vert?l:r-2.6*dir,vert?(dir>0?0:Math.PI):(dir>0?1.571:-1.571),'traf');c.sp=rnd(9,13);c.th=c.h;c.lane=r-2.6*dir;c.vert=vert}
+const peds=[];for(let i=0;i<16;i++){const p=roadPos(),m=person(CIV());m.position.set(p.x,0,p.z);S.add(m);peds.push({m,x:p.x,z:p.z,h:rnd(0,6.28),t:rnd(1,4),fly:0,vy:0,y:0})}
+let cops=[];
+function spawnCop(){const p=nearPos(65,95),m=person(COP);S.add(m);cops.push({m,x:p.x,z:p.z,h:0,stun:0,t:Math.random()*6})}
+function spawnCopCar(){const p=nearPos(70,100),c=addCar(p.x,p.z,p.h,'cop');c.max=23+wanted*1.6}
+/* ---------- helpers ---------- */
+function toast(s){const e=$('toast');e.textContent=s;e.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove('on'),1800)}
+function crime(n,msg){if(cd>0)return;cd=1.2;const w=wanted;wanted=Math.min(5,wanted+n);calm=0;toast(wanted>w?msg||'Wanted level up!':msg||'Cops are on you!')}
+function clearCops(){cops.forEach(c=>S.remove(c.m));cops=[];cars=cars.filter(c=>{if(c.ai=='cop'&&c!==pl.car){S.remove(c.m);return false}return true})}
+function busted(){toast('BUSTED!');if(pl.car){pl.car.v=0;pl.car=null;pl.m.visible=true}money=Math.max(0,money-100);wanted=0;pl.bust=0;clearCops();pl.x=27;pl.z=40;pl.h=0}
+function act(){if(!started)return;
+ if(pl.car){const c=pl.car;pl.x=c.x+Math.cos(c.h)*2.7;pl.z=c.z-Math.sin(c.h)*2.7;pl.h=c.h;pl.car=null;pl.m.visible=true;wall(pl,.5);return}
+ let best=null,bd=5;for(const c of cars){const d=Math.hypot(c.x-pl.x,c.z-pl.z);if(d<bd){bd=d;best=c}}
+ if(!best)return;
+ if(best.ai=='traf'||best.ai=='cop'){crime(best.ai=='cop'?2:1,'Carjacking!')}
+ else if(cops.some(c=>Math.hypot(c.x-pl.x,c.z-pl.z)<45)||cars.some(c=>c.ai=='cop'&&Math.hypot(c.x-pl.x,c.z-pl.z)<45))crime(1,'Grand theft auto!');
+ best.ai=null;best.v=0;pl.car=best;pl.m.visible=false}
+function drive(c,th,st,hb,dt){
+ c.v+=th*(th>0?(c.v<0?40:16):(c.v>0?40:10))*dt;
+ if(!th)c.v-=Math.sign(c.v)*Math.min(Math.abs(c.v),6*dt);
+ if(hb)c.v-=Math.sign(c.v)*Math.min(Math.abs(c.v),40*dt);
+ c.v=clamp(c.v,-10,c.max);c.h+=st*dt*2*clamp(c.v/6,-1,1)*(hb?1.6:1);
+ c.x+=Math.sin(c.h)*c.v*dt;c.z+=Math.cos(c.h)*c.v*dt;
+ if(wall(c,2.2))c.v*=-.35}
+function aim(o,tx,tz,len){const w=Math.atan2(tx-o.x,tz-o.z);for(const d of[0,.5,-.5,1,-1,1.6,-1.6,2.4,-2.4]){const a=w+d;if(!blocked(o.x+Math.sin(a)*len,o.z+Math.cos(a)*len))return a}return w+3}
+const turn=(h,a,r)=>h+clamp(Math.atan2(Math.sin(a-h),Math.cos(a-h)),-r,r);
+/* ---------- input ---------- */
+const keys={};
+addEventListener('keydown',e=>{keys[e.code]=1;if(e.code=='KeyF'&&!e.repeat)act();if(e.code=='Space'||e.code.startsWith('Arrow'))e.preventDefault()});
+addEventListener('keyup',e=>keys[e.code]=0);
+addEventListener('mousedown',()=>drag=true);addEventListener('mouseup',()=>drag=false);
+addEventListener('mousemove',e=>{if(drag)camOff=clamp(camOff-e.movementX*.006,-3.2,3.2)});
+$('go').onclick=()=>{if(document.body.classList.contains('touch'))document.documentElement.requestFullscreen?.()?.catch(()=>{});$('menu').style.display='none';started=true;toast('Nyaa~ let\'s cause chaos!')};
+/* ---------- touch controls (auto-detected) ---------- */
+const joy={x:0,y:0};
+if(matchMedia('(pointer:coarse)').matches)document.body.classList.add('touch');
+addEventListener('touchstart',()=>document.body.classList.add('touch'),{passive:true,once:true});
+addEventListener('contextmenu',e=>e.preventDefault());
+{const jb=$('joy'),kn=$('knob');let jid=null;
+ const jm=e=>{const r=jb.getBoundingClientRect();let dx=e.clientX-r.left-r.width/2,dy=e.clientY-r.top-r.height/2;const m=Math.hypot(dx,dy),L=50;if(m>L){dx*=L/m;dy*=L/m}kn.style.transform=`translate(${dx}px,${dy}px)`;joy.x=dx/L;joy.y=-dy/L};
+ jb.addEventListener('pointerdown',e=>{jid=e.pointerId;jb.setPointerCapture(jid);jm(e)});
+ jb.addEventListener('pointermove',e=>{if(e.pointerId===jid)jm(e)});
+ const je=e=>{if(e.pointerId===jid){jid=null;joy.x=joy.y=0;kn.style.transform=''}};
+ jb.addEventListener('pointerup',je);jb.addEventListener('pointercancel',je);
+ const hold=(id,code)=>{const b=$(id);b.addEventListener('pointerdown',e=>{b.setPointerCapture(e.pointerId);keys[code]=1;e.preventDefault()});['pointerup','pointercancel'].forEach(n=>b.addEventListener(n,()=>keys[code]=0))};
+ hold('bA','Space');hold('bR','ShiftLeft');
+ $('bF').addEventListener('pointerdown',e=>{e.preventDefault();act()});
+ const cv=R.domElement;let lid=null,lx=0;
+ cv.addEventListener('pointerdown',e=>{if(e.pointerType=='touch'){lid=e.pointerId;lx=e.clientX;drag=true}});
+ cv.addEventListener('pointermove',e=>{if(e.pointerId===lid){camOff=clamp(camOff-(e.clientX-lx)*.01,-3.2,3.2);lx=e.clientX}});
+ const le=e=>{if(e.pointerId===lid){lid=null;drag=false}};
+ cv.addEventListener('pointerup',le);cv.addEventListener('pointercancel',le)}
+/* ---------- HUD ---------- */
+$('stars').innerHTML='<i>★</i><i>★</i><i>★</i><i>★</i><i>★</i>';
+const mm=$('mm').getContext('2d');
+function hud(){const st=$('stars');[...st.children].forEach((s,i)=>s.classList.toggle('on',i<wanted));st.classList.toggle('blink',wanted>0&&calm>0);
+ $('money').textContent='$'+money;$('spd').textContent=pl.car?Math.round(Math.abs(pl.car.v)*3.6)+' km/h':'';
+ mm.clearRect(0,0,140,140);mm.save();mm.translate(70,70);const s=.8;mm.fillStyle='#667';
+ for(const b of B)if(Math.abs(b.x0-pl.x)<110&&Math.abs(b.z0-pl.z)<110)mm.fillRect((b.x0-pl.x)*s,(b.z0-pl.z)*s,(b.x1-b.x0)*s,(b.z1-b.z0)*s);
+ const dot=(x,z,c,r)=>{mm.fillStyle=c;mm.beginPath();mm.arc((x-pl.x)*s,(z-pl.z)*s,r,0,7);mm.fill()};
+ dot(SX,SZ,'#ff4fa3',6);const bl=Math.sin(tt*10)>0?'#f33':'#38f';
+ cops.forEach(c=>dot(c.x,c.z,bl,3));cars.forEach(c=>{if(c.ai=='cop')dot(c.x,c.z,bl,4)});dot(pl.x,pl.z,'#fff',5);dot(pl.x,pl.z,'#ff8fc7',3);mm.restore();
+ const tc=document.body.classList.contains('touch');let tip='';if(!pl.car){if(cars.some(c=>Math.hypot(c.x-pl.x,c.z-pl.z)<5))tip=tc?'Tap Enter to get in the car':'Press F to get in the car'}else tip=tc?'':'F exit  |  Space handbrake';
+ if(tc){const a=pl.car?'Brake':'Punch',b=pl.car?'Exit':'Enter';if($('bA').textContent!=a){$('bA').textContent=a;$('bF').textContent=b}}
+ if(pl.bust>.3)tip='The cops are closing in, MOVE!';$('tip').textContent=tip}
+/* ---------- main loop ---------- */
+let last=performance.now();
+function tick(now){requestAnimationFrame(tick);const dt=Math.min(.05,(now-last)/1000);last=now;tt+=dt;
+ if(started){
+ const dzn=v=>Math.abs(v)<.2?0:v,f=clamp((keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)+dzn(joy.y),-1,1),t=clamp((keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0)-dzn(joy.x),-1,1);
+ cd-=dt;pl.punch-=dt;
+ if(!pl.car){pl.h+=t*dt*3;const sp=(keys.ShiftLeft||keys.ShiftRight?11:7)*(f<0?.5:1);
+  pl.x+=Math.sin(pl.h)*f*sp*dt;pl.z+=Math.cos(pl.h)*f*sp*dt;wall(pl,.5);pl.t+=f?dt*sp*1.4:0;
+  if(f)walkAnim(pl.m,pl.t,.9);else walkAnim(pl.m,0,0);
+  if(keys.Space&&pl.punch<=0){pl.punch=.45;
+   for(const c of cops)if(Math.hypot(c.x-pl.x,c.z-pl.z)<2.6&&!c.stun){c.stun=2;c.x+=Math.sin(pl.h)*2.5;c.z+=Math.cos(pl.h)*2.5;crime(1,'Assaulting an officer!')}
+   for(const p of peds)if(!p.fly&&Math.hypot(p.x-pl.x,p.z-pl.z)<2.6){p.fly=1.2;p.vy=7;p.fx=Math.sin(pl.h)*9;p.fz=Math.cos(pl.h)*9;const g=Math.round(rnd(20,80));money+=g;crime(1,'Assault! +$'+g)}}
+  if(pl.punch>0)pl.m.ar[1].rotation.x=-1.7;
+ }else{drive(pl.car,f,t,keys.Space,dt);pl.x=pl.car.x;pl.z=pl.car.z;pl.h=pl.car.h}
+ if(pl.m.tail)pl.m.tail.rotation.z=Math.sin(tt*3)*.45;
+ pl.m.position.set(pl.x,0,pl.z);pl.m.rotation.y=pl.h;
+ /* cars */
+ let near=0,copD=1e9;
+ for(const c of cars){
+  if(c===pl.car){}
+  else if(c.ai=='cop'){const d=Math.hypot(pl.x-c.x,pl.z-c.z);copD=Math.min(copD,d);
+   c.h=turn(c.h,aim(c,pl.x,pl.z,12),dt*2.2);c.v+=((d<7?10:c.max)-c.v)*dt*1.5;
+   c.x+=Math.sin(c.h)*c.v*dt;c.z+=Math.cos(c.h)*c.v*dt;if(wall(c,2.2)){c.v*=-.3;c.h+=rnd(-1,1)}
+   if(d<5&&pl.car&&Math.abs(pl.car.v)<4)near++;
+   if(d>130)c.kill=1}
+  else if(c.ai=='traf'){c.v=c.sp;c.h=turn(c.h,c.th,dt*2);c.x+=Math.sin(c.h)*c.v*dt;c.z+=Math.cos(c.h)*c.v*dt;
+   const k=Math.min(1,dt*2);if(c.vert)c.x+=(c.lane-c.x)*k;else c.z+=(c.lane-c.z)*k;
+   if(c.x>D)c.x=-D;if(c.x<-D)c.x=D;if(c.z>D)c.z=-D;if(c.z<-D)c.z=D}
+  else{c.v-=Math.sign(c.v)*Math.min(Math.abs(c.v),5*dt);c.x+=Math.sin(c.h)*c.v*dt;c.z+=Math.cos(c.h)*c.v*dt;wall(c,2.2)}
+  c.m.position.set(c.x,0,c.z);c.m.rotation.y=c.h;
+  if(c.pol&&c.ai=='cop'){const f=Math.sin(tt*14)>0;c.m.r.visible=f;c.m.b.visible=!f}}
+ cars=cars.filter(c=>{if(c.kill&&c!==pl.car){S.remove(c.m);return false}return true});
+ for(let i=0;i<cars.length;i++)for(let j=i+1;j<cars.length;j++){const a=cars[i],b=cars[j],dx=b.x-a.x,dz=b.z-a.z,d=Math.hypot(dx,dz);
+  if(d<3.8&&d>.01){const o=(3.8-d)/2,nx=dx/d,nz=dz/d;a.x-=nx*o;a.z-=nz*o;b.x+=nx*o;b.z+=nz*o;
+   if(Math.abs(a.v)+Math.abs(b.v)>8&&(a===pl.car||b===pl.car)){const q=a===pl.car?b:a;if(q.ai=='cop')crime(1,'Rammed a police car!');pl.car.v*=.7}
+   if(a.ai!='traf')a.v*=.85;if(b.ai!='traf')b.v*=.85}}
+ /* pedestrians */
+ for(const p of peds){
+  if(p.fly>0){p.fly-=dt;p.x+=p.fx*dt;p.z+=p.fz*dt;p.vy-=22*dt;p.y=Math.max(0,p.y+p.vy*dt);p.m.rotation.x+=dt*9;
+   if(p.fly<=0){const q=roadPos();p.x=q.x;p.z=q.z;p.y=0;p.m.rotation.x=0}}
+  else{p.t-=dt;if(p.t<0){p.t=rnd(1.5,5);p.h=rnd(0,6.28)}
+   p.x+=Math.sin(p.h)*1.6*dt;p.z+=Math.cos(p.h)*1.6*dt;if(wall(p,.45))p.h+=2;walkAnim(p.m,tt*5+p.t,.6);p.m.rotation.y=p.h;
+   const c=pl.car;if(c&&Math.abs(c.v)>5&&Math.hypot(c.x-p.x,c.z-p.z)<2.6){p.fly=1.6;p.vy=9;p.fx=Math.sin(c.h)*c.v*.8;p.fz=Math.cos(c.h)*c.v*.8;crime(1,'Hit and run!')}}
+  p.m.position.set(p.x,p.y,p.z)}
+ /* police on foot */
+ for(const c of cops){const dx=pl.x-c.x,dz=pl.z-c.z,d=Math.hypot(dx,dz);copD=Math.min(copD,d);
+  if(c.stun>0){c.stun-=dt;c.m.rotation.x=-1.4;c.m.position.set(c.x,.4,c.z);continue}
+  c.m.rotation.x=0;c.h=turn(c.h,aim(c,pl.x,pl.z,3),dt*6);const sp=d<1.5?0:5.5+wanted*.8;
+  c.x+=Math.sin(c.h)*sp*dt;c.z+=Math.cos(c.h)*sp*dt;wall(c,.5);c.t+=dt*sp*1.4;walkAnim(c.m,c.t,.9);
+  c.m.position.set(c.x,0,c.z);c.m.rotation.y=c.h;
+  if(d<1.9&&!pl.car)near++;if(d>130)c.kill=1}
+ cops=cops.filter(c=>{if(c.kill){S.remove(c.m);return false}return true});
+ /* wanted logic */
+ if(wanted>0){
+  const ft=1+wanted,ct=wanted>1?Math.min(4,wanted-1):0;spT-=dt;
+  if(spT<0){spT=1.4;if(cops.length<ft)spawnCop();if(cars.filter(c=>c.ai=='cop').length<ct)spawnCopCar()}
+  if(copD>35)calm+=dt*(copD>70?2:1);else calm=0;
+  if(calm>8){wanted--;calm=0;toast(wanted?'Wanted level down':'Wanted level cleared!');if(!wanted)offT=0}
+  pl.bust=near?pl.bust+dt:Math.max(0,pl.bust-dt*.6);if(pl.bust>2.2)busted();
+  if(pl.car&&Math.hypot(pl.x-SX,pl.z-SZ)<5){wanted=0;calm=0;pl.car.m.children[0].material.color.set(pick(PAL));toast('Neko Spray! Heat cleared!')}
+ }else{offT+=dt;if(offT>3&&(cops.length||cars.some(c=>c.ai=='cop')))clearCops();pl.bust=0}
+ /* camera */
+ const tg=pl.car?pl.car.h:pl.h;camH=turn(camH,tg,dt*(pl.car?3:4));if(!drag)camOff-=camOff*Math.min(1,dt*1.5);
+ const a=camH+camOff,dist=pl.car?9+Math.abs(pl.car.v)*.1:6,ht=pl.car?4.2:3.2;
+ C.position.lerp(new THREE.Vector3(pl.x-Math.sin(a)*dist,ht,pl.z-Math.cos(a)*dist),Math.min(1,dt*8));
+ C.lookAt(pl.x,1.5,pl.z);C.fov=65+(pl.car?Math.abs(pl.car.v)*.4:0);C.updateProjectionMatrix();
+ hud()
+ }else{C.position.set(Math.sin(tt*.1)*60,40,Math.cos(tt*.1)*60);C.lookAt(0,5,0)}
+ R.render(S,C)}
+requestAnimationFrame(tick);
+</script></body></html>

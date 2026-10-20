@@ -1,0 +1,24 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.vscode/
+.idea/
+
+# python (sync service)
+__pycache__/
+*.pyc
+
+# temp files written by the sync service
+.sync-*
+.list-*
+*.tmp
+
+# secrets / local-only
+.env
+.htpasswd
+
+# build artifacts
+*.zip

@@ -1,0 +1,15 @@
+[Unit]
+Description=darkdev.boo projects sync
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+Environment=SYNC_SRC=/mnt/shared/info_ora/html
+Environment=SYNC_DST=/var/www/folder1/projects
+ExecStart=/usr/bin/python3 /opt/darkdev-sync/sync_server.py
+Restart=on-failure
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
