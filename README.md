@@ -33,7 +33,7 @@ The sync button and project auto-discovery need nginx (`/api/*`), so they only w
 ## Deploy
 
 ```sh
-git clone <your-repo-url> /var/www/folder1
+git clone https://github.com/darksqare/website /var/www/folder1
 chown -R www-data:www-data /var/www/folder1
 find /var/www/folder1 -type d -exec chmod 755 {} \;
 find /var/www/folder1 -type f -exec chmod 644 {} \;
